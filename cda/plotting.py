@@ -26,9 +26,12 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from .benchmarks import get
-from .core import CDA, CDAConfig
+from .core import CDA, CDAConfig, contact_numbers, contact_sigmas
 
 __all__ = [
+    "plot_mechanism",
+    "plot_equations",
+    "plot_one_day",
     "ALGORITHM_COLOURS",
     "ALGORITHM_STYLES",
     "apply_style",
@@ -465,5 +468,198 @@ def plot_summary_box(
         axes[index // columns][index % columns].axis("off")
 
     fig.suptitle(title, fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+# --------------------------------------------------------------------------
+# Explanatory figures: what the algorithm actually does
+# --------------------------------------------------------------------------
+ACCEPTED = "#2a78d6"   # categorical slot 1
+REJECTED = "#9b9a94"   # neutral; a state, not a series
+
+
+def plot_mechanism(path: str | Path, contact_num_max: int = 8, day: int = 3,
+                   alpha: float = 2.0, seed: int = 4) -> Path:
+    """The core mechanism: how a transmitter's own quality sets its behaviour.
+
+    Three transmitters with different health care factors, each in its own panel
+    on identical axes so the difference in reach is directly comparable.  The
+    contact counts and radii come from Equations 1 and 2 as implemented, not
+    from hand placement.
+    """
+    apply_style()
+    rng = np.random.default_rng(seed)
+
+    values = np.array([1.0, 5.0, 9.0])          # best, middle, worst
+    headings = ["Best solution in the population",
+                "A middling solution",
+                "Worst solution in the population"]
+    counts = contact_numbers(values, contact_num_max)
+    sigmas = contact_sigmas(values, day, alpha)
+    extent = 2.6 * float(sigmas.max())
+
+    fig, axes = plt.subplots(1, 3, figsize=(11.4, 4.3), sharex=True, sharey=True)
+    for axis, heading, count, sigma in zip(axes, headings, counts, sigmas):
+        axis.add_patch(plt.Circle((0.0, 0.0), 2.0 * sigma, fill=True,
+                                  facecolor=ACCEPTED, alpha=0.07, linewidth=0))
+        axis.add_patch(plt.Circle((0.0, 0.0), 2.0 * sigma, fill=False,
+                                  linestyle=(0, (4, 3)), edgecolor=ACCEPTED,
+                                  linewidth=1.2, alpha=0.8))
+        directions = rng.normal(size=(count, 2))
+        directions /= np.linalg.norm(directions, axis=1, keepdims=True)
+        radii = np.abs(rng.normal(0.0, sigma, size=count))[:, None]
+        targets = radii * directions
+        for target in targets:
+            axis.annotate("", xy=target, xytext=(0.0, 0.0),
+                          arrowprops=dict(arrowstyle="-|>", color=ACCEPTED,
+                                          linewidth=1.5, alpha=0.9,
+                                          shrinkA=6, shrinkB=0))
+        axis.plot(targets[:, 0], targets[:, 1], linestyle="none", marker="o",
+                  markersize=6, color=ACCEPTED, markeredgecolor=SURFACE,
+                  markeredgewidth=0.9)
+        axis.plot(0.0, 0.0, marker="*", markersize=22, linestyle="none",
+                  color="#e34948", markeredgecolor=SURFACE, markeredgewidth=1.3)
+
+        plural = "contact" if count == 1 else "contacts"
+        axis.set_title(f"{heading}\n{count} {plural}, reach {2 * sigma:.2f}",
+                       fontsize=10, fontweight="bold")
+        axis.set_xlim(-extent, extent)
+        axis.set_ylim(-extent, extent)
+        axis.set_aspect("equal")
+        axis.set_xticks([])
+        axis.set_yticks([])
+        axis.grid(False)
+        for spine in axis.spines.values():
+            spine.set_edgecolor(GRID)
+
+    handles = [
+        Line2D([], [], marker="*", markersize=14, linestyle="none", color="#e34948",
+               label="transmitter"),
+        Line2D([], [], marker="o", markersize=7, linestyle="none", color=ACCEPTED,
+               label="individual it contacts"),
+        Line2D([], [], linestyle=(0, (4, 3)), color=ACCEPTED, label="reach of its contacts"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.04))
+    fig.suptitle("A better solution makes more contacts, but reaches less far",
+                 fontsize=12, fontweight="bold", y=1.06)
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+def plot_equations(path: str | Path, alpha: float = 2.0, days: int = 12) -> Path:
+    """The two equations, drawn. Left: how many contacts. Right: how far."""
+    apply_style()
+    fig, (left, right) = plt.subplots(1, 2, figsize=(10.0, 4.0))
+
+    # --- Equation 1 --------------------------------------------------------
+    ratios = np.linspace(0.0, 1.0, 400)
+    # Categorical slots 1-3, assigned in fixed order.
+    slots = ("#2a78d6", "#eb6834", "#1baf7a")
+    patterns = ((None, None), (6, 2), (1, 1.6))
+    for index, maximum in enumerate((3, 5, 10)):
+        counts = np.floor(ratios * (maximum - 1)) + 1
+        left.step(ratios, counts, where="post", color=slots[index],
+                  dashes=patterns[index], label=f"ContactNum$_{{max}}$ = {maximum}")
+    left.set_xlabel("worst HCF  $\\leftarrow$   rank $r$   $\\rightarrow$  best HCF")
+    left.set_ylabel("contacts made")
+    left.set_title("Equation 1: how many contacts")
+    left.legend(loc="upper left")
+
+    # --- Equation 2 --------------------------------------------------------
+    grid = np.arange(1, days + 1)
+    for index, (ratio, name) in enumerate(((0.0, "worst HCF"), (0.5, "middle HCF"), (1.0, "best HCF"))):
+        sigma_min = (1.0 / 6.0) / (alpha ** (grid - 1))
+        sigma = ratio * (sigma_min - 1.0 / 6.0) + 1.0 / 6.0
+        colour = ("#eb6834", "#1baf7a", "#2a78d6")[index]
+        dashes = ((6, 2), (1, 1.6), (None, None))[index]
+        right.plot(grid, sigma, color=colour, marker="o", markersize=4,
+                   dashes=dashes, label=name)
+    right.set_yscale("log")
+    right.set_xlabel("day of the outbreak ($m$)")
+    right.set_ylabel(r"contact reach $\sigma$")
+    right.set_title(f"Equation 2: how far they reach ($\\alpha$ = {alpha})")
+    right.legend(loc="lower left")
+
+    fig.suptitle("One quantity, how good a solution is, drives both behaviours",
+                 fontsize=11.5, fontweight="bold", y=1.02)
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+def plot_one_day(path: str | Path, function_name: str = "ripple_cone",
+                 n_transmitters: int = 10, seed: int = 11,
+                 resolution: int = 300) -> Path:
+    """A single day of the outbreak, in three steps.
+
+    Shows the selection rule directly: a contacted individual joins the search
+    only if its objective value is no worse than the transmitter that reached it.
+    """
+    apply_style()
+    function = get(function_name)
+    problem = function.to_problem(budget=100_000)
+    config = CDAConfig.original(seed=seed, n_transmitters=n_transmitters, contact_num_max=6)
+    engine = CDA(config)
+    rng = np.random.default_rng(seed)
+
+    transmitters = engine._initial_transmitters(rng, problem.dim)
+    values = problem.evaluate(transmitters)
+    children, parent_index, _ = engine._spread(transmitters, values, 1, rng)
+    child_values = problem.evaluate(children)
+    caught = child_values <= values[parent_index]
+
+    real_parents = problem.denormalise(transmitters)
+    real_children = problem.denormalise(children)
+
+    low, high = function.bounds(2)
+    grid_x = np.linspace(low[0], high[0], resolution)
+    grid_y = np.linspace(low[1], high[1], resolution)
+    mesh_x, mesh_y = np.meshgrid(grid_x, grid_y)
+    surface = function.func(
+        np.column_stack([mesh_x.ravel(), mesh_y.ravel()])
+    ).reshape(mesh_x.shape)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12.6, 4.4))
+    titles = [
+        f"1. Morning: {len(transmitters)} transmitters",
+        f"2. They make {len(children)} contacts",
+        f"3. Evening: {int(caught.sum())} caught it",
+    ]
+    for axis, title in zip(axes, titles):
+        axis.contour(mesh_x, mesh_y, surface, levels=22, colors="#cfe2f8", linewidths=0.5)
+        axis.set_title(title, fontsize=10.5)
+        axis.set_xlabel("$x_1$")
+        axis.set_xlim(low[0], high[0])
+        axis.set_ylim(low[1], high[1])
+        axis.grid(False)
+    axes[0].set_ylabel("$x_2$")
+
+    axes[0].plot(real_parents[:, 0], real_parents[:, 1], linestyle="none", marker="*",
+                 markersize=15, color="#e34948", markeredgecolor=SURFACE, markeredgewidth=1.0)
+
+    for child, parent in zip(real_children, real_parents[parent_index]):
+        axes[1].annotate("", xy=child, xytext=parent,
+                         arrowprops=dict(arrowstyle="-|>", color=REJECTED,
+                                         linewidth=0.9, alpha=0.8, shrinkA=4, shrinkB=1))
+    axes[1].plot(real_parents[:, 0], real_parents[:, 1], linestyle="none", marker="*",
+                 markersize=15, color="#e34948", markeredgecolor=SURFACE, markeredgewidth=1.0)
+
+    axes[2].plot(real_children[~caught, 0], real_children[~caught, 1], linestyle="none",
+                 marker="x", markersize=6, color=REJECTED, markeredgewidth=1.6)
+    axes[2].plot(real_children[caught, 0], real_children[caught, 1], linestyle="none",
+                 marker="o", markersize=7, color=ACCEPTED, markeredgecolor=SURFACE,
+                 markeredgewidth=1.0)
+
+    handles = [
+        Line2D([], [], marker="*", markersize=13, linestyle="none", color="#e34948",
+               label="transmitter"),
+        Line2D([], [], marker="o", markersize=7, linestyle="none", color=ACCEPTED,
+               label="caught it: no worse than its transmitter, so it searches tomorrow"),
+        Line2D([], [], marker="x", markersize=7, linestyle="none", color=REJECTED,
+               markeredgewidth=1.6, label="shrugged it off: worse, so discarded"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.05))
+    fig.suptitle("One day of the outbreak: yesterday's transmitters are then dropped",
+                 fontsize=11.5, fontweight="bold", y=1.02)
     fig.tight_layout()
     return _save(fig, path)

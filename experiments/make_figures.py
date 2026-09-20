@@ -20,6 +20,9 @@ from cda.benchmarks import budget_for, get
 from cda.core import CDA, CDAConfig
 from cda.plotting import (
     plot_convergence,
+    plot_equations,
+    plot_mechanism,
+    plot_one_day,
     plot_population,
     plot_sensitivity,
     plot_spread_snapshots,
@@ -69,6 +72,11 @@ def main() -> None:
     args = parser.parse_args()
     FIGURES.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
+
+    print("how the algorithm works...")
+    written.append(plot_mechanism(FIGURES / "mechanism.png"))
+    written.append(plot_equations(FIGURES / "equations.png"))
+    written.append(plot_one_day(FIGURES / "one_day.png"))
 
     print("landscapes...")
     for name in ("sinc_well", "ripple_cone"):

@@ -67,6 +67,14 @@ The paper's own name for the objective value is **health care factor**, or HCF,
 and the rest of this README uses that name where it helps keep the metaphor
 straight.
 
+Here is the whole idea in one picture. Each panel is one transmitter, drawn on
+identical axes. A good solution makes many contacts but reaches barely any
+distance, so it refines what it has found. A bad solution makes a single contact
+that reaches right across the space, so it gambles. The counts and distances
+below were produced by the implementation, not placed by hand.
+
+![The core mechanism](results/figures/mechanism.png)
+
 ---
 
 ## How it works
@@ -130,6 +138,38 @@ Those two equations working together are the interesting part of CDA: a single
 quantity, how good a solution is, controls both how much the algorithm branches
 out from that solution and how far it reaches. Good solutions get refined
 finely and often. Bad solutions get one long shot in a random direction.
+
+![The two equations](results/figures/equations.png)
+
+The right-hand panel is worth dwelling on, because it explains the results
+further down. On a logarithmic scale the best transmitter's reach is a straight
+line falling three orders of magnitude in twelve days. Nothing in the algorithm
+can stop that fall or reverse it. The worst transmitter's reach never moves, and
+a middling one flattens out halfway. Only the solution the search most depends on
+has its step size driven to zero.
+
+### Selection: who catches it
+
+A contacted individual joins the search only if its objective value is no worse
+than that of the transmitter that reached it. Everything else is discarded, and
+the transmitters themselves are dropped at the end of the day, so each generation
+is made entirely of newly infected points.
+
+![One day of the outbreak](results/figures/one_day.png)
+
+### Convergence: many days in a row
+
+Repeat that day after day and the outbreak contracts. It starts scattered across
+the whole space, concentrates into the basins that contain the better solutions,
+and collapses onto the deepest one. The population count in each title is the
+number of transmitters still carrying the search.
+
+![Spread of the outbreak over successive days](results/figures/spread_ripple_cone.png)
+
+By day seven the surviving transmitters sit on the global minimum. This is CDA
+working exactly as intended, on a problem it handles well. What the results
+section shows is that the same contraction happens whether or not the search has
+found anything worth contracting onto, and that is the difficulty.
 
 ---
 
@@ -482,22 +522,25 @@ Best setting in the sweep: `alpha = 3.0`, `ContactNum_max = 10`, score -1.186.
 
 ## Figures
 
+The mechanism, the two equations, a single day and the day-by-day contraction
+are all shown in the sections above. The remaining figures are below.
+
 The two radial test functions:
 
 ![sinc_well](results/figures/landscape_sinc_well.png)
 ![ripple_cone](results/figures/landscape_ripple_cone.png)
 
-How the outbreak actually moves. Day by day the transmitters spread out, find
-the basins, and collapse onto the global minimum:
+Convergence against function evaluations, median of 15 runs with the
+inter-quartile range shaded. A dot at the end of a line marks an algorithm that
+terminated by itself before the budget ran out, which is how CDA almost always
+ends:
 
-![Spread of the outbreak](results/figures/spread_ripple_cone.png)
-
-Convergence against function evaluations. A dot at the end of a line means that
-algorithm terminated by itself before the budget ran out:
-
+![Convergence on sinc_well](results/figures/convergence_sinc_well_2d.png)
 ![Convergence on ripple_cone](results/figures/convergence_ripple_cone_2d.png)
+![Convergence on sphere 10D](results/figures/convergence_sphere_10d.png)
 ![Convergence on Rastrigin 10D](results/figures/convergence_rastrigin_10d.png)
 ![Convergence on Ackley 10D](results/figures/convergence_ackley_10d.png)
+![Convergence on Rosenbrock 10D](results/figures/convergence_rosenbrock_10d.png)
 
 The variable population, which is the feature that most distinguishes CDA from
 a conventional evolutionary algorithm:
