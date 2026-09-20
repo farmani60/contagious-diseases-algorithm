@@ -3,13 +3,21 @@
 A Python implementation of an optimisation algorithm that copies how an epidemic
 spreads through a town.
 
-The algorithm was published in 2010 by Aidin Mohammadi, Mohammad Reza Farmani
-and Caro Lucas. This repository contains a from-scratch implementation of it, a
-benchmark suite, four competing optimisers to compare it against, and the
-measured results.
+The algorithm was developed in 2010 by Aidin Mohammadi and Mohammad Reza
+Farmani. This repository contains a from-scratch implementation of it, a
+benchmark suite, four other optimisers to compare it against, and the measured
+results.
 
 **Every number in this README was produced by running the code in this
 repository.** Nothing is quoted from the original paper.
+
+**The headline result is negative.** Measured over 28 problems, 30 seeds each,
+CDA does not beat Particle Swarm Optimisation, a Genetic Algorithm or
+Differential Evolution on any problem, at any dimension, at any budget from 250
+evaluations to 60,000. It does beat random search. The reasons are structural
+and are set out below. This repository is worth reading for the benchmark
+method and for what the failure reveals, not as a recommendation to use the
+algorithm.
 
 ---
 
@@ -143,16 +151,21 @@ finely and often. Bad solutions get one long shot in a random direction.
 | Parallelism | Every contact in a day is independent, so an iteration parallelises freely |
 | Search space assumption | Requires normalised axes, since `sigma_max = 1/6` is an absolute step |
 
-### Where it is strong
+### What is distinctive about it
 
-- **It costs very little to get a good first answer.** On easy landscapes it
-  reaches a good solution in a few hundred evaluations and then stops by itself.
-  You do not have to pick an iteration budget in advance.
+These are properties of the design, not performance advantages. The measured
+results are below, and they do not show CDA competing with the baselines.
+
 - **It has almost no moving parts.** No velocities, no crossover operators, no
   temperature schedule, no archive. Two parameters do the work.
+- **It needs no budget decided in advance.** The run ends when the outbreak dies
+  out, so there is no iteration count to choose.
 - **The population sizes itself.** On a promising landscape many contacts get
   infected and the population swells; on a hostile one it shrinks and the run
   ends rather than burning evaluations.
+- **One quantity drives two behaviours.** How good a solution is sets both how
+  many contacts it makes and how far they reach. That coupling is unusual, and
+  it is the idea worth taking from the algorithm.
 
 ### Where it is weak
 
@@ -387,18 +400,21 @@ Mann-Whitney U tests across all 28 problems, at `p < 0.05`:
 
 Read plainly, the measurements say this:
 
-- **CDA works.** Tuned, it beats random search on all 28 problems with no ties.
-  As originally specified it beats random search on 22, ties on 5 and loses on
-  1, a weaker result only because it stops so early. The epidemic mechanism is a
-  real search, not a dressed-up random sample.
-- **It is outclassed by the standard baselines.** Against PSO it loses on all 28
+- **It never wins.** Across the whole study there is no problem, at any
+  dimension and at any budget from 250 evaluations to 60,000, where either CDA
+  configuration has the best median result.
+- **It loses to every standard baseline.** Against PSO it loses on all 28
   problems. Against DE it loses on 26 of 28, against GA on 24 of 28. Its average
-  rank is fourth of six.
-- **Letting it restart is worth more than any other single change.** The tuned
-  configuration beats the original one on 27 of 28 problems, purely because the
-  original stops early and leaves most of its budget unused.
-- **The gap widens with dimension.** In 2D, CDA is close to the baselines on
-  several problems. In 30D it is not competitive on any of them.
+  rank is fourth of six. The differences are statistically significant, not
+  noise.
+- **It clears the floor, and only the floor.** It does beat random sampling, on
+  all 28 problems when tuned and on 22 as originally specified. That confirms
+  the epidemic mechanism is a real search rather than a disguised random sample.
+  It is the weakest claim that can be made for an optimiser.
+- **Restarting it helps more than any parameter change.** The tuned
+  configuration is better than the original on 27 of 28 problems, purely because
+  the original stops early and leaves most of its budget unused. It still does
+  not win anything.
 - **The typesetting of Equation 2 matters.** Using the equation as printed makes
   the algorithm markedly worse in every configuration, which is the measured
   evidence that the printed form is not what was intended.
@@ -411,6 +427,33 @@ information: there is no crossover and no shared best, so the method is a set of
 independent hill descents rather than a population searching together. That is
 also why it is cheap, self-terminating and trivially parallel. The strengths and
 the weaknesses have one common source.
+
+### Does the budget explain the gap?
+
+CDA stops on its own after a few hundred evaluations, so handing every algorithm
+tens of thousands of them could be said to favour the baselines. It does not.
+Sweeping the budget from 250 evaluations upward over eight problems, neither CDA
+configuration wins a single problem at any budget:
+
+<!-- BEGIN:BUDGET -->
+| evaluation budget | CDA | CDA (tuned) | PSO | GA | DE | Random |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 250 | 3.00 (0) | 3.50 (0) | 2.12 (3) | 1.38 (5) | 5.38 (0) | 5.62 (0) |
+| 500 | 3.50 (0) | 4.38 (0) | 2.38 (0) | 1.00 (8) | 3.75 (0) | 6.00 (0) |
+| 1,000 | 3.88 (0) | 5.00 (0) | 2.25 (0) | 1.00 (8) | 3.12 (0) | 5.75 (0) |
+| 2,000 | 4.62 (0) | 4.25 (0) | 2.12 (1) | 1.12 (7) | 3.00 (0) | 5.88 (0) |
+| 5,000 | 4.75 (0) | 4.12 (0) | 1.75 (4) | 1.62 (4) | 2.75 (0) | 6.00 (0) |
+| 10,000 | 4.50 (0) | 4.38 (0) | 1.62 (5) | 2.12 (3) | 2.38 (0) | 6.00 (0) |
+
+Mean rank over 8 problems, with problems won in brackets. 1.00 would mean winning every problem.
+
+<!-- END:BUDGET -->
+
+Its best showing is at 250 evaluations, where it places ahead of Differential
+Evolution while still winning nothing. DE spends its first generations filling a
+population before it can improve anything, whereas CDA makes progress
+immediately. That is a difference in warm-up cost rather than in search quality,
+and it is gone by 1,000 evaluations.
 
 ### Parameter sensitivity
 
@@ -516,9 +559,10 @@ config = CDAConfig(
 ## Reproducing the results
 
 ```bash
-pytest                                          # 192 tests
+pytest                                          # 206 tests
 python experiments/run_radial_functions.py      # the two radial functions
 python experiments/run_benchmark_suite.py       # the full 28-problem study
+python experiments/run_budget_sweep.py          # who wins at each budget
 python experiments/run_sensitivity.py           # parameter sweeps
 python experiments/make_figures.py              # all figures
 python experiments/build_readme.py              # refresh the tables in this file
@@ -535,7 +579,7 @@ cda/
   runner.py       repeated seeded runs, summary statistics, significance tests
   plotting.py     every figure
 experiments/      runnable scripts, one per table or figure set
-tests/            192 tests
+tests/            206 tests
 results/          CSV results and PNG figures, committed
 ```
 
@@ -545,7 +589,7 @@ results/          CSV results and PNG figures, committed
 @article{mohammadi2010cda,
   title   = {Development of a New Evolutionary Algorithm Inspired by
              Outbreak of Contagious Diseases},
-  author  = {Mohammadi, Aidin and Farmani, Mohammad Reza and Lucas, Caro},
+  author  = {Mohammadi, Aidin and Farmani, Mohammad Reza},
   year    = {2010}
 }
 ```

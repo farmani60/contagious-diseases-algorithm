@@ -168,6 +168,30 @@ def significance_table() -> str:
     return table(["CDA variant", "versus", "wins", "ties", "losses"], body)
 
 
+def budget_table() -> str:
+    """Mean rank and wins per algorithm at each evaluation budget."""
+    rows = read("budget_sweep.csv")
+    if not rows:
+        return "_Run `experiments/run_budget_sweep.py` first._"
+    budgets = sorted({int(r["budget"]) for r in rows})
+    present = [a for a in ORDER if a in {r["algorithm"] for r in rows}]
+    body = []
+    for budget in budgets:
+        subset = [r for r in rows if int(r["budget"]) == budget]
+        problems = len({r["problem"] for r in subset})
+        line = [f"{budget:,}"]
+        for name in present:
+            ranks = [int(r["rank"]) for r in subset if r["algorithm"] == name]
+            wins = sum(1 for r in ranks if r == 1)
+            line.append(f"{sum(ranks) / len(ranks):.2f} ({wins})" if ranks else "-")
+        body.append(line)
+    note = (
+        f"\nMean rank over {problems} problems, with problems won in brackets. "
+        "1.00 would mean winning every problem.\n"
+    )
+    return table(["evaluation budget"] + present, body) + "\n" + note
+
+
 def sensitivity_tables() -> str:
     rows = read("sensitivity.csv")
     if not rows:
@@ -215,6 +239,8 @@ def main() -> None:
     print(success_table())
     print("\n## SIGNIFICANCE\n")
     print(significance_table())
+    print("\n## BUDGET\n")
+    print(budget_table())
     print("\n## SENSITIVITY\n")
     print(sensitivity_tables())
 

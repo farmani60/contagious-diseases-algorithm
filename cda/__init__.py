@@ -1,6 +1,6 @@
 """Contagious Diseases Algorithm: a Python implementation of the 2010 paper.
 
-    A. Mohammadi, M. R. Farmani and C. Lucas,
+    A. Mohammadi and M. R. Farmani,
     "Development of a New Evolutionary Algorithm Inspired by Outbreak of
     Contagious Diseases".
 

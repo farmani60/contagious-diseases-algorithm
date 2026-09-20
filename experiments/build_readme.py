@@ -34,6 +34,7 @@ SECTIONS = {
     "SUMMARY": tables.summary_table,
     "SUCCESS": tables.success_table,
     "SIGNIFICANCE": tables.significance_table,
+    "BUDGET": tables.budget_table,
     "SENSITIVITY": tables.sensitivity_tables,
 }
 

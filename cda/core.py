@@ -2,7 +2,7 @@
 
 Reference implementation of:
 
-    A. Mohammadi, M. R. Farmani and C. Lucas,
+    A. Mohammadi and M. R. Farmani,
     "Development of a New Evolutionary Algorithm Inspired by Outbreak of
     Contagious Diseases" (2010).
 
