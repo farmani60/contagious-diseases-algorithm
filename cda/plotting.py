@@ -1,0 +1,471 @@
+"""Figure generation.
+
+Chart conventions used throughout, so every figure reads the same way:
+
+* one fixed categorical colour per algorithm, assigned by identity and never
+  cycled, so a colour means the same thing in every figure;
+* a line style per algorithm as well, so the series stay separable in greyscale
+  and for colour-vision deficiency;
+* two-pixel lines, recessive grid and axes, a legend whenever more than one
+  series is present;
+* a single y-axis per panel.  Quantities on different scales go in stacked
+  panels rather than on a second axis.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Iterable, Mapping, Sequence
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.lines import Line2D
+
+from .benchmarks import get
+from .core import CDA, CDAConfig
+
+__all__ = [
+    "ALGORITHM_COLOURS",
+    "ALGORITHM_STYLES",
+    "apply_style",
+    "plot_surface",
+    "plot_convergence",
+    "plot_spread_snapshots",
+    "plot_population",
+    "plot_sensitivity",
+    "plot_summary_box",
+]
+
+# Categorical slots 1-5 of the reference palette, in fixed order.  Validated for
+# colour-vision deficiency on the adjacent pairlist.
+ALGORITHM_COLOURS: dict[str, str] = {
+    "CDA": "#2a78d6",         # blue
+    "CDA (paper)": "#2a78d6",
+    "CDA (budgeted)": "#4a3aa7",  # violet, slot 7
+    "PSO": "#eb6834",         # orange
+    "GA": "#1baf7a",          # aqua
+    "DE": "#eda100",          # yellow
+    "Random": "#e87ba4",      # magenta
+}
+
+# Secondary encoding: the palette's contrast warning is relieved by line style
+# and by the result tables in the README.
+ALGORITHM_STYLES: dict[str, tuple] = {
+    "CDA": (0, ()),
+    "CDA (paper)": (0, ()),
+    "CDA (budgeted)": (0, (4, 1, 1, 1)),
+    "PSO": (0, (6, 2)),
+    "GA": (0, (1, 1.6)),
+    "DE": (0, (5, 1.5, 1, 1.5)),
+    "Random": (0, (2, 2)),
+}
+
+TEXT_PRIMARY = "#0b0b0b"
+TEXT_SECONDARY = "#52514e"
+GRID = "#dedcd6"
+SURFACE = "#ffffff"
+
+
+def apply_style() -> None:
+    """Set the shared Matplotlib defaults."""
+    plt.rcParams.update(
+        {
+            "figure.facecolor": SURFACE,
+            "axes.facecolor": SURFACE,
+            "savefig.facecolor": SURFACE,
+            "axes.edgecolor": GRID,
+            "axes.labelcolor": TEXT_SECONDARY,
+            "axes.titlecolor": TEXT_PRIMARY,
+            "axes.titlesize": 11,
+            "axes.titleweight": "bold",
+            "axes.labelsize": 9.5,
+            "axes.linewidth": 0.8,
+            "axes.grid": True,
+            "axes.axisbelow": True,
+            "grid.color": GRID,
+            "grid.linewidth": 0.6,
+            "grid.alpha": 0.9,
+            "xtick.color": TEXT_SECONDARY,
+            "ytick.color": TEXT_SECONDARY,
+            "xtick.labelsize": 8.5,
+            "ytick.labelsize": 8.5,
+            "xtick.direction": "out",
+            "ytick.direction": "out",
+            "legend.frameon": False,
+            "legend.fontsize": 8.5,
+            "legend.labelcolor": TEXT_SECONDARY,
+            "lines.linewidth": 2.0,
+            "lines.solid_capstyle": "round",
+            "font.size": 9.5,
+            "figure.dpi": 150,
+            "savefig.dpi": 150,
+            "savefig.bbox": "tight",
+        }
+    )
+
+
+def _colour(name: str) -> str:
+    return ALGORITHM_COLOURS.get(name, "#52514e")
+
+
+def _style(name: str) -> tuple:
+    return ALGORITHM_STYLES.get(name, (0, ()))
+
+
+def _save(fig: plt.Figure, path: str | Path) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
+# --------------------------------------------------------------------------
+# Landscapes
+# --------------------------------------------------------------------------
+def plot_surface(name: str, path: str | Path, resolution: int = 220) -> Path:
+    """A 3-D surface and a contour of a two-dimensional benchmark function."""
+    apply_style()
+    function = get(name)
+    low, high = function.bounds(2)
+    grid_x = np.linspace(low[0], high[0], resolution)
+    grid_y = np.linspace(low[1], high[1], resolution)
+    mesh_x, mesh_y = np.meshgrid(grid_x, grid_y)
+    values = function.func(
+        np.column_stack([mesh_x.ravel(), mesh_y.ravel()])
+    ).reshape(mesh_x.shape)
+
+    fig = plt.figure(figsize=(10.5, 4.4))
+    surface_axis = fig.add_subplot(1, 2, 1, projection="3d")
+    surface_axis.plot_surface(
+        mesh_x, mesh_y, values, cmap="Blues_r", linewidth=0, antialiased=True, alpha=0.95
+    )
+    surface_axis.set_xlabel("$x_1$")
+    surface_axis.set_ylabel("$x_2$")
+    surface_axis.set_zlabel("f(x)")
+    surface_axis.set_title(f"{name}: landscape")
+    surface_axis.view_init(elev=32, azim=-128)
+    surface_axis.grid(False)
+
+    contour_axis = fig.add_subplot(1, 2, 2)
+    contour_axis.contourf(mesh_x, mesh_y, values, levels=40, cmap="Blues_r")
+    contour_axis.contour(mesh_x, mesh_y, values, levels=18, colors=GRID, linewidths=0.4)
+    optimum = function.optimum(2)
+    if optimum is not None:
+        contour_axis.plot(
+            optimum[0], optimum[1], marker="*", markersize=15,
+            color="#e34948", markeredgecolor=SURFACE, markeredgewidth=1.2,
+            linestyle="none", label="global minimum",
+        )
+        legend = contour_axis.legend(
+            loc="lower left", frameon=True, facecolor=SURFACE, edgecolor=GRID, framealpha=0.95
+        )
+        legend.get_frame().set_linewidth(0.8)
+    contour_axis.set_xlabel("$x_1$")
+    contour_axis.set_ylabel("$x_2$")
+    contour_axis.set_title(f"{name}: contours")
+    contour_axis.grid(False)
+
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+# --------------------------------------------------------------------------
+# Convergence
+# --------------------------------------------------------------------------
+def plot_convergence(
+    traces: Mapping[str, Sequence[tuple[Sequence[int], Sequence[float]]]],
+    path: str | Path,
+    *,
+    title: str,
+    optimum: float | None = None,
+    ylabel: str = "best objective value",
+    logy: bool | None = None,
+) -> Path:
+    """Median best-so-far against function evaluations, one line per algorithm.
+
+    ``traces`` maps an algorithm name to a list of ``(evaluations, best)`` pairs,
+    one per seed.  The median across seeds is drawn as a line and the
+    inter-quartile range as a light band.
+    """
+    apply_style()
+    fig, axis = plt.subplots(figsize=(7.2, 4.3))
+
+    if logy is None:
+        logy = optimum is not None
+
+    overall_longest = max(
+        (max(max(evals) for evals, _ in runs) for runs in traces.values() if runs),
+        default=0,
+    )
+    for name, runs in traces.items():
+        if not runs:
+            continue
+        longest = max(max(evals) for evals, _ in runs)
+        grid = np.linspace(1, longest, 400)
+        stacked = []
+        for evals, best in runs:
+            evals = np.asarray(evals, dtype=float)
+            best = np.asarray(best, dtype=float)
+            # Step interpolation: the best-so-far holds until it improves.
+            index = np.searchsorted(evals, grid, side="right") - 1
+            index = np.clip(index, 0, len(best) - 1)
+            series = best[index]
+            series[grid < evals[0]] = best[0]
+            stacked.append(series)
+        stacked = np.vstack(stacked)
+
+        if logy and optimum is not None:
+            stacked = np.maximum(stacked - optimum, 1e-16)
+
+        median = np.median(stacked, axis=0)
+        lower = np.percentile(stacked, 25, axis=0)
+        upper = np.percentile(stacked, 75, axis=0)
+
+        axis.fill_between(grid, lower, upper, color=_colour(name), alpha=0.13, linewidth=0)
+        axis.plot(grid, median, color=_colour(name), dashes=_style(name)[1] or (None, None),
+                  label=name, solid_capstyle="round")
+        # An algorithm that terminates before the budget runs out gets a dot at
+        # the end of its line, so a short line reads as "stopped here" rather
+        # than as a missing series.
+        if longest < 0.995 * overall_longest:
+            axis.plot(
+                grid[-1], median[-1], marker="o", markersize=7, linestyle="none",
+                color=_colour(name), markeredgecolor=SURFACE, markeredgewidth=1.4,
+                zorder=5,
+            )
+
+    if logy:
+        axis.set_yscale("log")
+        axis.set_ylabel(f"{ylabel} - optimum" if optimum is not None else ylabel)
+    else:
+        axis.set_ylabel(ylabel)
+
+    axis.set_xlabel("function evaluations")
+    axis.set_title(title)
+    axis.grid(True, which="major")
+    if logy:
+        axis.grid(True, which="minor", alpha=0.35)
+    handles, labels = axis.get_legend_handles_labels()
+    if any(len(runs) and max(max(e) for e, _ in runs) < 0.995 * overall_longest
+           for runs in traces.values()):
+        handles.append(
+            Line2D([], [], marker="o", markersize=6, linestyle="none", color=TEXT_SECONDARY,
+                   label="terminated early")
+        )
+        labels.append("terminated early")
+    axis.legend(handles=handles, labels=labels, loc="best", ncol=2)
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+# --------------------------------------------------------------------------
+# How CDA moves through the search space
+# --------------------------------------------------------------------------
+def plot_spread_snapshots(
+    path: str | Path,
+    function_name: str = "paper_f2",
+    iterations: Sequence[int] = (1, 3, 5, 7),
+    config: CDAConfig | None = None,
+    resolution: int = 300,
+) -> Path:
+    """Transmitter positions over the contours of a function, day by day.
+
+    This is the figure that shows what the algorithm actually does: the outbreak
+    starts spread across the community and collapses onto the deepest minimum.
+    """
+    apply_style()
+    function = get(function_name)
+    problem = function.to_problem(budget=200_000)
+    config = config or CDAConfig.paper(seed=0, track_positions=True)
+    config = CDAConfig(**{**vars(config), "track_positions": True})
+    result = CDA(config).run(problem)
+    positions = result.history["positions"]
+
+    low, high = function.bounds(2)
+    grid_x = np.linspace(low[0], high[0], resolution)
+    grid_y = np.linspace(low[1], high[1], resolution)
+    mesh_x, mesh_y = np.meshgrid(grid_x, grid_y)
+    values = function.func(
+        np.column_stack([mesh_x.ravel(), mesh_y.ravel()])
+    ).reshape(mesh_x.shape)
+
+    shown = [i for i in iterations if i <= len(positions)]
+    fig, axes = plt.subplots(1, len(shown), figsize=(3.3 * len(shown), 3.5), squeeze=False)
+    for axis, iteration in zip(axes[0], shown):
+        axis.contour(mesh_x, mesh_y, values, levels=26, colors="#b9d4f3", linewidths=0.5)
+        points = positions[iteration - 1]
+        axis.plot(
+            points[:, 0], points[:, 1], linestyle="none", marker="o", markersize=4.5,
+            color="#2a78d6", markeredgecolor=SURFACE, markeredgewidth=0.7,
+        )
+        optimum = function.optimum(2)
+        if optimum is not None:
+            axis.plot(
+                optimum[0], optimum[1], marker="*", markersize=14, linestyle="none",
+                color="#e34948", markeredgecolor=SURFACE, markeredgewidth=1.0,
+            )
+        axis.set_title(f"day {iteration}  ({len(points)} transmitters)")
+        axis.set_xlabel("$x_1$")
+        axis.set_xlim(low[0], high[0])
+        axis.set_ylim(low[1], high[1])
+        axis.grid(False)
+    axes[0][0].set_ylabel("$x_2$")
+
+    handles = [
+        Line2D([], [], linestyle="none", marker="o", markersize=6, color="#2a78d6", label="transmitter"),
+        Line2D([], [], linestyle="none", marker="*", markersize=11, color="#e34948", label="global minimum"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=2, bbox_to_anchor=(0.5, -0.04))
+    fig.suptitle(f"How the outbreak spreads on {function_name}", y=1.02, fontsize=11, fontweight="bold")
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+def plot_population(
+    path: str | Path,
+    function_name: str = "rastrigin",
+    dim: int = 10,
+    configs: Mapping[str, CDAConfig] | None = None,
+    max_days: int = 150,
+    smoothing: int = 9,
+) -> Path:
+    """Population size and infection rate per day, in stacked panels.
+
+    The two quantities live on different scales, so they get their own panels
+    rather than a shared second axis.  Each series is drawn twice: the raw
+    per-day value faintly, and a rolling median on top, because the day-to-day
+    signal is noisy enough to hide the trend.
+    """
+    apply_style()
+    configs = configs or {
+        "CDA (paper)": CDAConfig.paper(seed=0),
+        "CDA (budgeted)": CDAConfig.budgeted(seed=0),
+    }
+    fig, (top, bottom) = plt.subplots(2, 1, figsize=(7.2, 5.4), sharex=True)
+
+    def smooth(series: np.ndarray) -> np.ndarray:
+        if smoothing < 3 or series.size < smoothing:
+            return series
+        padded = np.pad(series, smoothing // 2, mode="edge")
+        return np.array(
+            [np.median(padded[i : i + smoothing]) for i in range(series.size)]
+        )
+
+    for name, config in configs.items():
+        problem = get(function_name).to_problem(dim, budget=30_000)
+        result = CDA(config).run(problem)
+        iterations = np.asarray(result.history["iteration"])[:max_days]
+        colour, dashes = _colour(name), _style(name)[1] or (None, None)
+        for axis, key in ((top, "population"), (bottom, "acceptance_rate")):
+            values = np.asarray(result.history[key], dtype=float)[:max_days]
+            axis.plot(iterations, values, color=colour, linewidth=0.8, alpha=0.3)
+            axis.plot(iterations, smooth(values), color=colour, dashes=dashes, label=name)
+            if len(iterations) < max_days:
+                axis.plot(
+                    iterations[-1], smooth(values)[-1], marker="o", markersize=7,
+                    linestyle="none", color=colour, markeredgecolor=SURFACE,
+                    markeredgewidth=1.4, zorder=5,
+                )
+
+    top.set_ylabel("transmitters alive")
+    top.set_title(f"Population dynamics on {function_name} ({dim}D), first {max_days} days")
+    handles, labels = top.get_legend_handles_labels()
+    handles.append(
+        Line2D([], [], marker="o", markersize=6, linestyle="none", color=TEXT_SECONDARY)
+    )
+    labels.append("outbreak ends")
+    top.legend(handles=handles, labels=labels, loc="best", ncol=3)
+    bottom.set_ylabel("infection rate")
+    bottom.set_xlabel("iteration (day)")
+    bottom.set_ylim(0, 1)
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+def plot_sensitivity(
+    grid: np.ndarray,
+    alphas: Sequence[float],
+    contacts: Sequence[int],
+    path: str | Path,
+    *,
+    title: str = "Parameter sensitivity",
+    label: str = "median error (log scale)",
+) -> Path:
+    """Heatmap of solution quality over the two main tuning parameters."""
+    apply_style()
+    fig, axis = plt.subplots(figsize=(6.4, 4.4))
+    image = axis.imshow(grid, cmap="Blues_r", aspect="auto", origin="lower")
+    axis.set_xticks(range(len(contacts)), [str(c) for c in contacts])
+    axis.set_yticks(range(len(alphas)), [str(a) for a in alphas])
+    axis.set_xlabel("ContactNum$_{max}$")
+    axis.set_ylabel(r"$\alpha$")
+    axis.set_title(title)
+    axis.grid(False)
+
+    # Direct labels on every cell: the relief for the palette's contrast warning.
+    # The ink colour follows where the cell sits in the colour ramp, not where it
+    # sits in the data, so the label tracks the actual background lightness.
+    finite = grid[np.isfinite(grid)]
+    low = float(finite.min()) if finite.size else 0.0
+    high = float(finite.max()) if finite.size else 1.0
+    extent = (high - low) or 1.0
+    for row in range(grid.shape[0]):
+        for column in range(grid.shape[1]):
+            value = grid[row, column]
+            position = (value - low) / extent  # 0 = darkest cell, 1 = lightest
+            axis.text(
+                column, row, f"{value:.2f}", ha="center", va="center", fontsize=8,
+                color=SURFACE if position < 0.42 else TEXT_PRIMARY,
+            )
+    bar = fig.colorbar(image, ax=axis)
+    bar.set_label(label, color=TEXT_SECONDARY, fontsize=9)
+    bar.outline.set_edgecolor(GRID)
+    fig.tight_layout()
+    return _save(fig, path)
+
+
+def plot_summary_box(
+    data: Mapping[str, Mapping[str, Sequence[float]]],
+    path: str | Path,
+    *,
+    title: str = "Final error by algorithm",
+) -> Path:
+    """Box plots of final error per algorithm, one panel per problem."""
+    apply_style()
+    problems = list(data)
+    columns = min(3, len(problems))
+    rows = int(np.ceil(len(problems) / columns))
+    fig, axes = plt.subplots(rows, columns, figsize=(4.2 * columns, 3.2 * rows), squeeze=False)
+
+    for index, problem in enumerate(problems):
+        axis = axes[index // columns][index % columns]
+        series = data[problem]
+        names = list(series)
+        samples = [np.maximum(np.asarray(series[n], dtype=float), 1e-16) for n in names]
+        box = axis.boxplot(
+            samples, patch_artist=True, widths=0.6, showfliers=False,
+            medianprops=dict(color=TEXT_PRIMARY, linewidth=1.4),
+            whiskerprops=dict(color=GRID, linewidth=1.0),
+            capprops=dict(color=GRID, linewidth=1.0),
+        )
+        for patch, name in zip(box["boxes"], names):
+            patch.set_facecolor(_colour(name))
+            patch.set_alpha(0.75)
+            patch.set_edgecolor(SURFACE)
+            patch.set_linewidth(1.5)
+        axis.set_yscale("log")
+        axis.set_xticks(range(1, len(names) + 1), names, rotation=30, ha="right")
+        axis.set_title(problem)
+        axis.set_ylabel("error")
+
+    for index in range(len(problems), rows * columns):
+        axes[index // columns][index % columns].axis("off")
+
+    fig.suptitle(title, fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    return _save(fig, path)

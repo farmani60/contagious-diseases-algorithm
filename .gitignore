@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Experiment logs (results/*.csv and results/figures/ are committed)
+results/*_log.txt
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+manuscript.pdf

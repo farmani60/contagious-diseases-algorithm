@@ -1,0 +1,45 @@
+{
+  "seeds": 30,
+  "problems": 28,
+  "algorithms": [
+    "CDA (paper)",
+    "CDA (budgeted)",
+    "PSO",
+    "GA",
+    "DE",
+    "Random"
+  ],
+  "average_ranks": [
+    {
+      "algorithm": "DE",
+      "average_rank": 1.8571428571428572,
+      "problems": 28
+    },
+    {
+      "algorithm": "PSO",
+      "average_rank": 1.9464285714285714,
+      "problems": 28
+    },
+    {
+      "algorithm": "GA",
+      "average_rank": 2.5357142857142856,
+      "problems": 28
+    },
+    {
+      "algorithm": "CDA (budgeted)",
+      "average_rank": 4.089285714285714,
+      "problems": 28
+    },
+    {
+      "algorithm": "CDA (paper)",
+      "average_rank": 4.678571428571429,
+      "problems": 28
+    },
+    {
+      "algorithm": "Random",
+      "average_rank": 5.892857142857143,
+      "problems": 28
+    }
+  ],
+  "total_seconds": 133.54707960799988
+}
