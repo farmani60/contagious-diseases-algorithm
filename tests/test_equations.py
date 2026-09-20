@@ -128,13 +128,13 @@ class TestConfigValidation:
         with pytest.raises(ValueError):
             CDAConfig(**kwargs)
 
-    def test_paper_preset_matches_table_one(self):
-        config = CDAConfig.paper()
+    def test_original_preset_matches_the_specification(self):
+        config = CDAConfig.original()
         assert config.n_transmitters == 50
         assert config.alpha == 2.0
         assert config.on_extinction == "stop"
 
-    def test_budgeted_preset_restarts(self):
-        config = CDAConfig.budgeted()
+    def test_tuned_preset_restarts(self):
+        config = CDAConfig.tuned()
         assert config.on_extinction == "restart"
         assert config.on_convergence == "restart"

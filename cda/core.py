@@ -122,8 +122,8 @@ class CDAConfig:
     seed: int | None = None
 
     @classmethod
-    def paper(cls, **overrides) -> "CDAConfig":
-        """The configuration described in the manuscript (Table 1, alpha = 2).
+    def original(cls, **overrides) -> "CDAConfig":
+        """The algorithm exactly as originally specified: 50 transmitters, alpha = 2.
 
         One outbreak, stopping as soon as it dies out or the community collapses
         onto a single objective value.
@@ -131,7 +131,7 @@ class CDAConfig:
         return cls(**{"n_transmitters": 50, "alpha": 2.0, **overrides})
 
     @classmethod
-    def budgeted(cls, **overrides) -> "CDAConfig":
+    def tuned(cls, **overrides) -> "CDAConfig":
         """A variant that spends a full evaluation budget.
 
         Equation 2 shrinks the contact radius by a factor of ``alpha`` every day,

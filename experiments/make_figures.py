@@ -31,8 +31,8 @@ from cda.runner import RESULTS_DIR
 FIGURES = RESULTS_DIR / "figures"
 
 VARIANTS = {
-    "CDA (paper)": lambda seed: CDA(CDAConfig.paper(seed=seed)),
-    "CDA (budgeted)": lambda seed: CDA(CDAConfig.budgeted(seed=seed)),
+    "CDA": lambda seed: CDA(CDAConfig.original(seed=seed)),
+    "CDA (tuned)": lambda seed: CDA(CDAConfig.tuned(seed=seed)),
     "PSO": lambda seed: ALGORITHMS["PSO"](seed=seed),
     "GA": lambda seed: ALGORITHMS["GA"](seed=seed),
     "DE": lambda seed: ALGORITHMS["DE"](seed=seed),
@@ -40,7 +40,7 @@ VARIANTS = {
 }
 
 CONVERGENCE_PANELS = (
-    ("paper_f1", 2), ("paper_f2", 2), ("sphere", 10),
+    ("sinc_well", 2), ("ripple_cone", 2), ("sphere", 10),
     ("rastrigin", 10), ("ackley", 10), ("rosenbrock", 10),
 )
 
@@ -71,11 +71,11 @@ def main() -> None:
     written: list[Path] = []
 
     print("landscapes...")
-    for name in ("paper_f1", "paper_f2"):
+    for name in ("sinc_well", "ripple_cone"):
         written.append(plot_surface(name, FIGURES / f"landscape_{name}.png"))
 
     print("how the outbreak spreads...")
-    written.append(plot_spread_snapshots(FIGURES / "spread_paper_f2.png", "paper_f2"))
+    written.append(plot_spread_snapshots(FIGURES / "spread_ripple_cone.png", "ripple_cone"))
 
     print("population dynamics...")
     written.append(plot_population(FIGURES / "population_dynamics.png"))

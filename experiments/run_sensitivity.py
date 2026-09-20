@@ -25,7 +25,7 @@ from cda.core import CDA, CDAConfig
 from cda.runner import RESULTS_DIR, write_csv
 
 PROBLEMS = (
-    ("paper_f1", 2), ("paper_f2", 2), ("sphere", 10),
+    ("sinc_well", 2), ("ripple_cone", 2), ("sphere", 10),
     ("rastrigin", 10), ("ackley", 10), ("rosenbrock", 10), ("griewank", 10),
 )
 
@@ -61,7 +61,7 @@ def main() -> None:
     grid = np.full((len(ALPHAS), len(CONTACTS)), np.nan)
     for i, alpha in enumerate(ALPHAS):
         for j, contacts in enumerate(CONTACTS):
-            config = CDAConfig.budgeted(alpha=alpha, contact_num_max=contacts, n_transmitters=20)
+            config = CDAConfig.tuned(alpha=alpha, contact_num_max=contacts, n_transmitters=20)
             combined, per_problem = score(config, args.seeds)
             grid[i, j] = combined
             rows.append({
@@ -74,7 +74,7 @@ def main() -> None:
 
     print(f"\n=== population size (alpha 1.15, 10 contacts) ===")
     for population in POPULATIONS:
-        config = CDAConfig.budgeted(n_transmitters=population)
+        config = CDAConfig.tuned(n_transmitters=population)
         combined, per_problem = score(config, args.seeds)
         rows.append({
             "sweep": "population", "alpha": 1.15, "contact_num_max": 10,
@@ -86,7 +86,7 @@ def main() -> None:
 
     print(f"\n=== Equation 2: corrected vs literal ===")
     for formula in ("corrected", "literal"):
-        for preset_name, preset in (("paper", CDAConfig.paper()), ("budgeted", CDAConfig.budgeted())):
+        for preset_name, preset in (("original", CDAConfig.original()), ("tuned", CDAConfig.tuned())):
             config = CDAConfig(**{**vars(preset), "sigma_formula": formula})
             combined, per_problem = score(config, args.seeds)
             rows.append({

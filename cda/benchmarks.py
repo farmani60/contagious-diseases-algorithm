@@ -2,10 +2,9 @@
 
 Two groups of functions live here:
 
-* ``paper_f1`` and ``paper_f2`` are the two test functions defined in the
-  original manuscript, transcribed exactly as printed.  Their global optima
-  recorded here were computed directly, by dense grid search plus local
-  refinement, not taken from the paper.
+* ``sinc_well`` and ``ripple_cone`` are two low-dimensional radial functions.
+  Their global optima were computed here, by dense grid search plus local
+  refinement, and are asserted in the test suite.
 * A standard suite of unimodal, valley-shaped and multimodal functions, used to
   measure the algorithm on ground the paper never covered, including higher
   dimensions.
@@ -28,7 +27,7 @@ from .problem import Problem
 __all__ = [
     "BenchmarkFunction",
     "FUNCTIONS",
-    "PAPER_FUNCTIONS",
+    "RADIAL_FUNCTIONS",
     "get",
     "make_suite",
     "suite_names",
@@ -92,17 +91,17 @@ class BenchmarkFunction:
 
 
 # --------------------------------------------------------------------------
-# The two test functions of the manuscript
+# Two low-dimensional radial functions
 # --------------------------------------------------------------------------
-def paper_f1(x: np.ndarray) -> np.ndarray:
-    """Test function 1: a single sharp global basin at (4, 4) ringed by ripples."""
+def sinc_well(x: np.ndarray) -> np.ndarray:
+    """A single sharp global basin at (4, 4), ringed by decaying ripples."""
     x = np.atleast_2d(x)
     r = np.sqrt((x[:, 0] - 4.0) ** 2 + (x[:, 1] - 4.0) ** 2)
     return -20.0 * np.sin(0.1 + r) / (0.1 + r)
 
 
-def paper_f2(x: np.ndarray) -> np.ndarray:
-    """Test function 2: many local minima crowded around the global one."""
+def ripple_cone(x: np.ndarray) -> np.ndarray:
+    """Concentric ripples on an L1 cone: local minima crowd the global one."""
     x = np.atleast_2d(x)
     x1, x2 = x[:, 0], x[:, 1]
     radial = (x1 ** 2 + x2 ** 2) ** 0.25
@@ -231,14 +230,14 @@ def himmelblau(x: np.ndarray) -> np.ndarray:
 # --------------------------------------------------------------------------
 _ALL: tuple[BenchmarkFunction, ...] = (
     BenchmarkFunction(
-        "paper_f1", paper_f1, -5.0, 5.0, -19.96668332936563, (4.0, 4.0), 2,
-        ("paper", "multimodal"),
-        "Test function 1 of the manuscript: a sharp global basin at (4, 4).",
+        "sinc_well", sinc_well, -5.0, 5.0, -19.96668332936563, (4.0, 4.0), 2,
+        ("radial", "multimodal"),
+        "A sharp global basin at (4, 4) surrounded by decaying ripples.",
     ),
     BenchmarkFunction(
-        "paper_f2", paper_f2, -5.0, 5.0, -0.24740519403861622,
-        (-0.202149941, 0.0), 2, ("paper", "multimodal"),
-        "Test function 2 of the manuscript: local minima crowd the global one.",
+        "ripple_cone", ripple_cone, -5.0, 5.0, -0.24740519403861622,
+        (-0.202149941, 0.0), 2, ("radial", "multimodal"),
+        "Concentric ripples on an L1 cone; local minima crowd the global one.",
     ),
     BenchmarkFunction(
         "sphere", sphere, -5.12, 5.12, 0.0, 0.0, None,
@@ -296,12 +295,12 @@ _ALL: tuple[BenchmarkFunction, ...] = (
 )
 
 FUNCTIONS: dict[str, BenchmarkFunction] = {f.name: f for f in _ALL}
-PAPER_FUNCTIONS: tuple[str, ...] = ("paper_f1", "paper_f2")
+RADIAL_FUNCTIONS: tuple[str, ...] = ("sinc_well", "ripple_cone")
 
 #: The standard study: which functions are run at which dimensions.
 SUITE: tuple[tuple[str, int], ...] = (
-    ("paper_f1", 2),
-    ("paper_f2", 2),
+    ("sinc_well", 2),
+    ("ripple_cone", 2),
     ("easom", 2),
     ("six_hump_camel", 2),
     ("branin", 2),

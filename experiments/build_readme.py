@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
 
 SECTIONS = {
-    "PAPER_FUNCTIONS": tables.paper_tables,
+    "RADIAL_FUNCTIONS": tables.radial_tables,
     "RANKS": tables.rank_table,
     "SUMMARY": tables.summary_table,
     "SUCCESS": tables.success_table,

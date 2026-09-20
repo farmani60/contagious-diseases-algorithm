@@ -96,13 +96,13 @@ class TestRunner:
 
     def test_run_once_accepts_a_cda_config(self):
         problem = get("sphere").to_problem(2, budget=2000)
-        record = run_once("CDA", problem, seed=0, cda_config=CDAConfig.budgeted())
+        record = run_once("CDA", problem, seed=0, cda_config=CDAConfig.tuned())
         assert record.evaluations == 2000
 
     def test_cda_config_seed_is_overridden_per_run(self):
         problem = get("rastrigin").to_problem(2, budget=2000)
-        a = run_once("CDA", problem.copy_fresh(), 1, cda_config=CDAConfig.budgeted())
-        b = run_once("CDA", problem.copy_fresh(), 2, cda_config=CDAConfig.budgeted())
+        a = run_once("CDA", problem.copy_fresh(), 1, cda_config=CDAConfig.tuned())
+        b = run_once("CDA", problem.copy_fresh(), 2, cda_config=CDAConfig.tuned())
         assert a.best_value != b.best_value
 
     def test_success_flag_tracks_the_tolerance(self):

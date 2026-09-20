@@ -34,15 +34,15 @@ from cda.runner import (
     write_json,
 )
 
-ALGORITHMS = ("CDA (paper)", "CDA (budgeted)", "PSO", "GA", "DE", "Random")
+ALGORITHMS = ("CDA", "CDA (tuned)", "PSO", "GA", "DE", "Random")
 
 CDA_CONFIGS = {
-    "CDA (paper)": CDAConfig.paper(),
-    "CDA (budgeted)": CDAConfig.budgeted(),
+    "CDA": CDAConfig.original(),
+    "CDA (tuned)": CDAConfig.tuned(),
 }
 
 QUICK_SUITE = (
-    ("paper_f1", 2), ("paper_f2", 2), ("sphere", 10),
+    ("sinc_well", 2), ("ripple_cone", 2), ("sphere", 10),
     ("rastrigin", 10), ("ackley", 10), ("rosenbrock", 10),
 )
 
@@ -68,8 +68,8 @@ def main() -> None:
     elapsed = time.perf_counter() - started
 
     summary = summarise(records)
-    significance = compare_to_cda(records, reference="CDA (paper)")
-    significance += compare_to_cda(records, reference="CDA (budgeted)")
+    significance = compare_to_cda(records, reference="CDA")
+    significance += compare_to_cda(records, reference="CDA (tuned)")
     ranks = average_ranks(summary)
 
     write_csv(records, RESULTS_DIR / "runs.csv")
@@ -90,10 +90,10 @@ def main() -> None:
     for row in ranks:
         print(f"  {row['algorithm']:<18}{row['average_rank']:.2f}")
 
-    print("\n=== CDA (budgeted) against each baseline ===")
+    print("\n=== CDA (tuned) against each baseline ===")
     tally: dict[str, list[int]] = {}
     for row in significance:
-        if row["reference"] != "CDA (budgeted)":
+        if row["reference"] != "CDA (tuned)":
             continue
         counts = tally.setdefault(row["other"], [0, 0, 0])
         if row["verdict"] == "tie":

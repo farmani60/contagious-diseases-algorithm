@@ -2,8 +2,8 @@
   "seeds": 30,
   "problems": 28,
   "algorithms": [
-    "CDA (paper)",
-    "CDA (budgeted)",
+    "CDA",
+    "CDA (tuned)",
     "PSO",
     "GA",
     "DE",
@@ -26,12 +26,12 @@
       "problems": 28
     },
     {
-      "algorithm": "CDA (budgeted)",
+      "algorithm": "CDA (tuned)",
       "average_rank": 4.089285714285714,
       "problems": 28
     },
     {
-      "algorithm": "CDA (paper)",
+      "algorithm": "CDA",
       "average_rank": 4.678571428571429,
       "problems": 28
     },
@@ -41,5 +41,5 @@
       "problems": 28
     }
   ],
-  "total_seconds": 133.54707960799988
+  "total_seconds": 134.163777105
 }

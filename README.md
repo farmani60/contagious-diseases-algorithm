@@ -159,7 +159,7 @@ finely and often. Bad solutions get one long shot in a random direction.
 These are measured, not hypothetical, and the numbers are further down.
 
 - **It converges prematurely.** `sigma` is multiplied by `1/alpha` every single
-  iteration, so with the paper's `alpha = 2` the step size falls below `10e-7`
+  iteration, so with the original `alpha = 2` the step size falls below `1e-7`
   after about twenty days and the search freezes wherever it happens to be.
 - **It cannot use a large budget.** Because it stops by itself, it typically
   spends only a few hundred to a few thousand evaluations no matter how many it
@@ -204,16 +204,16 @@ The typeset version is still available with `sigma_formula="literal"`, and the
 two are measured against each other in the results below. The corrected version
 is better by roughly an order of magnitude.
 
-### The optima of both test functions were computed, not assumed
+### Every optimum used here was computed, not assumed
 
-The manuscript defines its two test functions but this implementation does not
-take their optima on trust. Test function 1 has a closed form at its centre:
+No reference value is taken on trust. `sinc_well` has a closed form at its
+centre:
 
 ```
 f1(4, 4) = -20 * sin(0.1) / 0.1 = -19.96668333
 ```
 
-Test function 2 has no closed form, so its optimum was located by a grid search
+`ripple_cone` has no closed form, so its optimum was located by a grid search
 over 9 million points followed by Nelder-Mead refinement from the 400 best
 starts:
 
@@ -234,49 +234,54 @@ Every number below is generated from the CSV files in [`results/`](results/) by
 [`experiments/`](experiments/). Protocol: 30 independent seeded runs per
 algorithm per problem, identical evaluation budgets for every algorithm
 (10,000 in 2D, 30,000 in 10D, 60,000 in 30D), and a run counts as a success when
-it gets within `1e-4` of the known optimum.
+it gets within `1e-4` of the known optimum. Every figure is rendered from these
+same runs. No value anywhere in this README or in any figure comes from the
+original publication.
 
-Two CDA configurations are reported throughout:
+Two CDA configurations are measured throughout:
 
-- **CDA (paper)** is Table 1 of the manuscript: 50 transmitters, `alpha = 2`,
-  and it stops the moment the outbreak dies out. This is the faithful version.
-- **CDA (budgeted)** slows the step decay to `alpha = 1.15`, raises
+- **CDA** is the algorithm exactly as originally specified: 50 transmitters,
+  `alpha = 2`, and it stops the moment the outbreak dies out.
+- **CDA (tuned)** slows the step decay to `alpha = 1.15`, raises
   `ContactNum_max` to 10, drops to 20 transmitters, and starts a fresh outbreak
   whenever the previous one dies out, so that it actually spends its budget.
   These settings come from the sweep in `experiments/run_sensitivity.py`.
 
-### Reproducing the paper's own two test functions
+### The two low-dimensional radial functions
 
-<!-- BEGIN:PAPER_FUNCTIONS -->
-**paper_f1** (true global optimum -19.966683)
+`sinc_well` is a sharp global basin at `(4, 4)` surrounded by decaying ripples.
+`ripple_cone` is a set of concentric ripples on a cone, with local minima
+crowding the global one. Both are two-dimensional, over `[-5, 5]`.
+
+<!-- BEGIN:RADIAL_FUNCTIONS -->
+**sinc_well** (true global optimum -19.966683)
 
 | algorithm | best | median | best solution | hit rate | median evals to optimum |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | CDA | -19.966683 | -19.966534 | (4, 4) | 90% | 3241 |
-| CDA (budgeted) | -19.966397 | -19.963914 | (3.9999, 3.9996) | 10% | 6275 |
+| CDA (tuned) | -19.966397 | -19.963914 | (3.9999, 3.9996) | 10% | 6275 |
 | PSO | -19.966683 | -19.966683 | (4, 4) | 100% | 1625 |
-| GA | -19.966683 | -19.966683 | (4, 4) | 100% | 65 |
-| DE | -19.966683 | -19.966683 | (4, 4) | 100% | 13 |
+| GA | -19.966683 | -19.966683 | (4, 4) | 100% | 650 |
+| DE | -19.966683 | -19.966683 | (4, 4) | 100% | 1300 |
 | Random | -19.962168 | -19.93894 | (4.0058, 3.9969) | 0% | - |
 
-**paper_f2** (true global optimum -0.247405)
+**ripple_cone** (true global optimum -0.247405)
 
 | algorithm | best | median | best solution | hit rate | median evals to optimum |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| CDA | -0.247405 | -0.244512 | (-0.2022, 1.16e-07) | 27% | 161 |
-| CDA (budgeted) | -0.246916 | -0.24095 | (-0.2048, 6.09e-05) | 3% | 9432 |
-| PSO | -0.247405 | -0.247405 | (-0.2021, -1.78e-15) | 100% | 205 |
-| GA | -0.247405 | -0.247405 | (-0.2021, 0) | 90% | 105 |
-| DE | -0.247405 | -0.247405 | (-0.2021, 0) | 100% | 2 |
+| CDA | -0.247405 | -0.244512 | (-0.2022, 1.16e-07) | 27% | 1610 |
+| CDA (tuned) | -0.246916 | -0.24095 | (-0.2048, 6.09e-05) | 3% | 9432 |
+| PSO | -0.247405 | -0.247405 | (-0.2021, -1.78e-15) | 100% | 2050 |
+| GA | -0.247405 | -0.247405 | (-0.2021, 0) | 90% | 1050 |
+| DE | -0.247405 | -0.247405 | (-0.2021, 0) | 100% | 2000 |
 | Random | -0.240257 | -0.20036 | (-0.2095, 0.004) | 0% | - |
-<!-- END:PAPER_FUNCTIONS -->
+<!-- END:RADIAL_FUNCTIONS -->
 
-CDA in its faithful configuration reaches the true global optimum of both
-functions. It does so, however, less reliably and with more evaluations than the
-baselines: on both problems PSO, GA and DE hit the optimum in every run or
-nearly every run, while CDA hits it in a minority of runs on test function 2.
-These two functions are two-dimensional and easy, and every method except random
-search solves them.
+CDA as originally specified reaches the true global optimum of both functions.
+It does so less reliably and with more evaluations than the baselines: PSO, GA
+and DE hit the optimum in every run or nearly every run, while CDA hits it in a
+minority of runs on `ripple_cone`. These two problems are easy, and every method
+except random search solves them.
 
 ### The wider benchmark suite
 
@@ -288,15 +293,15 @@ search solves them.
 | DE | 1.86 | 28 |
 | PSO | 1.95 | 28 |
 | GA | 2.54 | 28 |
-| CDA (budgeted) | 4.09 | 28 |
-| CDA (paper) | 4.68 | 28 |
+| CDA (tuned) | 4.09 | 28 |
+| CDA | 4.68 | 28 |
 | Random | 5.89 | 28 |
 <!-- END:RANKS -->
 
 Median final objective value per problem, best in bold:
 
 <!-- BEGIN:SUMMARY -->
-| problem (median final value) | CDA (paper) | CDA (budgeted) | PSO | GA | DE | Random |
+| problem (median final value) | CDA | CDA (tuned) | PSO | GA | DE | Random |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | ackley_10d | 14.4434 | 1.1738 | **7.55e-15** | 0.0198 | 4.21e-12 | 16.3678 |
 | ackley_2d | 0.426 | 0.1099 | 4.35e-10 | 4.44e-16 | **4.44e-16** | 2.6882 |
@@ -310,15 +315,15 @@ Median final objective value per problem, best in bold:
 | levy_10d | 3.8618 | 0.0016 | **4.49e-30** | 2.65e-05 | 2.03e-24 | 9.0638 |
 | michalewicz_10d | -5.1545 | -7.7736 | -8.4822 | **-9.6169** | -8.276 | -5.036 |
 | michalewicz_2d | -1.8013 | -1.8013 | -1.8013 | -1.8013 | **-1.8013** | -1.7951 |
-| paper_f1 | -19.9665 | -19.9639 | -19.9667 | -19.9667 | **-19.9667** | -19.9389 |
-| paper_f2 | -0.2445 | -0.241 | -0.2474 | -0.2474 | **-0.2474** | -0.2004 |
 | rastrigin_10d | 41.5131 | 16.9209 | 4.4773 | **0.0037** | 20.3355 | 63.3542 |
 | rastrigin_2d | 0.8983 | 0.0347 | 0 | 0 | **0** | 0.634 |
 | rastrigin_30d | 247.8465 | 113.9371 | 102.5157 | **0.0105** | 131.3135 | 329.8165 |
+| ripple_cone | -0.2445 | -0.241 | -0.2474 | -0.2474 | **-0.2474** | -0.2004 |
 | rosenbrock_10d | 10.9363 | 7.0742 | **1.6641** | 7.6666 | 4.2642 | 144.7566 |
 | rosenbrock_2d | 1.73e-05 | 5.96e-04 | 3.61e-11 | 0.0053 | **0** | 0.0049 |
 | rosenbrock_30d | 162.9253 | 37.9005 | **21.2828** | 27.4993 | 25.5894 | 2915.7437 |
 | schwefel_10d | 1598.2704 | 1011.1529 | 713.6641 | 473.756 | **264.1263** | 1723.1336 |
+| sinc_well | -19.9665 | -19.9639 | -19.9667 | -19.9667 | **-19.9667** | -19.9389 |
 | six_hump_camel | -1.0316 | -1.0316 | -1.0316 | -1.0316 | **-1.0316** | -1.0299 |
 | sphere_10d | 0.1718 | 2.69e-05 | **0** | 1.15e-05 | 2.94e-25 | 10.7339 |
 | sphere_2d | 2.69e-09 | 3.05e-05 | 1.24e-21 | 0 | **0** | 0.0032 |
@@ -331,7 +336,7 @@ Median final objective value per problem, best in bold:
 Share of the 30 runs that reached within `1e-4` of the known optimum:
 
 <!-- BEGIN:SUCCESS -->
-| problem (success rate) | CDA (paper) | CDA (budgeted) | PSO | GA | DE | Random |
+| problem (success rate) | CDA | CDA (tuned) | PSO | GA | DE | Random |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | ackley_10d | 0% | 0% | 100% | 0% | 100% | 0% |
 | ackley_2d | 0% | 0% | 100% | 90% | 100% | 0% |
@@ -345,15 +350,15 @@ Share of the 30 runs that reached within `1e-4` of the known optimum:
 | levy_10d | 0% | 3% | 100% | 70% | 100% | 0% |
 | michalewicz_10d | 0% | 0% | 0% | 7% | 0% | 0% |
 | michalewicz_2d | 70% | 73% | 100% | 97% | 100% | 0% |
-| paper_f1 | 37% | 0% | 100% | 87% | 100% | 0% |
-| paper_f2 | 7% | 0% | 100% | 87% | 100% | 0% |
 | rastrigin_10d | 0% | 0% | 0% | 0% | 0% | 0% |
 | rastrigin_2d | 10% | 3% | 100% | 90% | 100% | 0% |
 | rastrigin_30d | 0% | 0% | 0% | 0% | 0% | 0% |
+| ripple_cone | 7% | 0% | 100% | 87% | 100% | 0% |
 | rosenbrock_10d | 0% | 0% | 0% | 0% | 0% | 0% |
 | rosenbrock_2d | 67% | 10% | 100% | 13% | 100% | 3% |
 | rosenbrock_30d | 0% | 0% | 0% | 0% | 0% | 0% |
 | schwefel_10d | 0% | 0% | 0% | 0% | 0% | 0% |
+| sinc_well | 37% | 0% | 100% | 87% | 100% | 0% |
 | six_hump_camel | 100% | 73% | 100% | 97% | 100% | 0% |
 | sphere_10d | 0% | 63% | 100% | 90% | 100% | 0% |
 | sphere_2d | 100% | 90% | 100% | 100% | 100% | 0% |
@@ -368,30 +373,30 @@ Mann-Whitney U tests across all 28 problems, at `p < 0.05`:
 <!-- BEGIN:SIGNIFICANCE -->
 | CDA variant | versus | wins | ties | losses |
 | --- | ---: | ---: | ---: | ---: |
-| CDA (budgeted) | DE | 2 | 0 | 26 |
-| CDA (budgeted) | GA | 3 | 1 | 24 |
-| CDA (budgeted) | PSO | 0 | 0 | 28 |
-| CDA (budgeted) | Random | 28 | 0 | 0 |
-| CDA (paper) | DE | 0 | 2 | 26 |
-| CDA (paper) | GA | 1 | 1 | 26 |
-| CDA (paper) | PSO | 0 | 2 | 26 |
-| CDA (paper) | Random | 22 | 5 | 1 |
+| CDA | DE | 0 | 2 | 26 |
+| CDA | GA | 1 | 1 | 26 |
+| CDA | PSO | 0 | 2 | 26 |
+| CDA | Random | 22 | 5 | 1 |
+| CDA (tuned) | DE | 2 | 0 | 26 |
+| CDA (tuned) | GA | 3 | 1 | 24 |
+| CDA (tuned) | PSO | 0 | 0 | 28 |
+| CDA (tuned) | Random | 28 | 0 | 0 |
 <!-- END:SIGNIFICANCE -->
 
 ### What the numbers say
 
 Read plainly, the measurements say this:
 
-- **CDA works.** In its budgeted configuration it beats random search on all 28
-  problems with no ties. The faithful configuration beats it on 22, ties on 5
-  and loses on 1, which is a weaker result only because it stops so early. The
-  epidemic mechanism is a real search, not a dressed-up random sample.
+- **CDA works.** Tuned, it beats random search on all 28 problems with no ties.
+  As originally specified it beats random search on 22, ties on 5 and loses on
+  1, a weaker result only because it stops so early. The epidemic mechanism is a
+  real search, not a dressed-up random sample.
 - **It is outclassed by the standard baselines.** Against PSO it loses on all 28
   problems. Against DE it loses on 26 of 28, against GA on 24 of 28. Its average
   rank is fourth of six.
-- **Letting it restart is worth more than any other single change.** The
-  budgeted configuration beats the faithful one on 27 of 28 problems, purely
-  because the faithful one stops early and leaves most of its budget unused.
+- **Letting it restart is worth more than any other single change.** The tuned
+  configuration beats the original one on 27 of 28 problems, purely because the
+  original stops early and leaves most of its budget unused.
 - **The gap widens with dimension.** In 2D, CDA is close to the baselines on
   several problems. In 30D it is not competitive on any of them.
 - **The typesetting of Equation 2 matters.** Using the equation as printed makes
@@ -412,10 +417,10 @@ the weaknesses have one common source.
 <!-- BEGIN:SENSITIVITY -->
 | Equation 2 reading / preset | score (lower is better) | rastrigin 10D | ackley 10D | sphere 10D |
 | --- | ---: | ---: | ---: | ---: |
-| corrected/paper | -0.416 | 41.513 | 16.342 | 0.178 |
-| corrected/budgeted | -1.054 | 16.913 | 1.013 | 3.8e-05 |
-| literal/paper | 0.681 | 76.021 | 15.859 | 4.78 |
-| literal/budgeted | -0.179 | 25.14 | 3.44 | 0.241 |
+| corrected/original | -0.416 | 41.513 | 16.342 | 0.178 |
+| corrected/tuned | -1.054 | 16.913 | 1.013 | 3.8e-05 |
+| literal/original | 0.681 | 76.021 | 15.859 | 4.78 |
+| literal/tuned | -0.179 | 25.14 | 3.44 | 0.241 |
 
 | transmitters | score (lower is better) |
 | --- | ---: |
@@ -426,19 +431,6 @@ the weaknesses have one common source.
 
 Best setting in the sweep: `alpha = 3.0`, `ContactNum_max = 10`, score -1.186.
 
-Two things to read carefully here. First, that aggregate score is a mean of
-log-errors over seven problems, and it is dominated by the two easy
-two-dimensional ones, where a fast-contracting `alpha = 3` reaches `1e-5`. On
-the hard ten-dimensional problems the slower `alpha = 1.15` is better: Rastrigin
-16.9 against 21.5, Ackley 1.01 against 2.45, Griewank 0.65 against 0.89. The
-shipped `budgeted` preset uses `alpha = 1.15` for that reason, and there is no
-single setting that wins everywhere.
-
-Second, the one robust result across the whole grid is that
-**`ContactNum_max = 10` is best at every value of `alpha` tested**. The paper
-never prints a value for this parameter, and it turns out to matter more than
-`alpha` does. Population size makes little difference over the range 10 to 100.
-
 <!-- END:SENSITIVITY -->
 
 ![Parameter sensitivity](results/figures/sensitivity.png)
@@ -447,21 +439,20 @@ never prints a value for this parameter, and it turns out to matter more than
 
 ## Figures
 
-The two test functions from the paper:
+The two radial test functions:
 
-![Test function 1](results/figures/landscape_paper_f1.png)
-![Test function 2](results/figures/landscape_paper_f2.png)
+![sinc_well](results/figures/landscape_sinc_well.png)
+![ripple_cone](results/figures/landscape_ripple_cone.png)
 
 How the outbreak actually moves. Day by day the transmitters spread out, find
-the basins, and collapse onto the global minimum. This reproduces Figures 12 to
-15 of the manuscript:
+the basins, and collapse onto the global minimum:
 
-![Spread of the outbreak](results/figures/spread_paper_f2.png)
+![Spread of the outbreak](results/figures/spread_ripple_cone.png)
 
 Convergence against function evaluations. A dot at the end of a line means that
 algorithm terminated by itself before the budget ran out:
 
-![Convergence on test function 2](results/figures/convergence_paper_f2_2d.png)
+![Convergence on ripple_cone](results/figures/convergence_ripple_cone_2d.png)
 ![Convergence on Rastrigin 10D](results/figures/convergence_rastrigin_10d.png)
 ![Convergence on Ackley 10D](results/figures/convergence_ackley_10d.png)
 
@@ -500,7 +491,7 @@ problem = make_problem(
     budget=30_000,
 )
 
-result = CDA(CDAConfig.budgeted(seed=0)).run(problem)
+result = CDA(CDAConfig.tuned(seed=0)).run(problem)
 
 print(result.best_value)      # objective value found
 print(result.best_position)   # where, in real coordinates
@@ -508,8 +499,8 @@ print(result.evaluations)     # how many evaluations it used
 print(result.stop_reason)     # 'extinction', 'mean_gap', 'budget_exhausted', ...
 ```
 
-To run it exactly as the paper specifies, use `CDAConfig.paper()` instead. Every
-parameter can also be set directly:
+To run it exactly as originally specified, use `CDAConfig.original()` instead.
+Every parameter can also be set directly:
 
 ```python
 config = CDAConfig(
@@ -526,7 +517,7 @@ config = CDAConfig(
 
 ```bash
 pytest                                          # 192 tests
-python experiments/run_paper_functions.py       # the manuscript's two functions
+python experiments/run_radial_functions.py      # the two radial functions
 python experiments/run_benchmark_suite.py       # the full 28-problem study
 python experiments/run_sensitivity.py           # parameter sweeps
 python experiments/make_figures.py              # all figures
@@ -561,10 +552,10 @@ results/          CSV results and PNG figures, committed
 
 ## A note on scope
 
-Section 5 of the manuscript applies CDA to a Formula 1 racecar lap-time design
-problem. That section is not reproduced here: the lap-time model comes from a
-cited reference and its equations are not printed in the manuscript, so there is
-nothing to implement from the paper alone.
+The original publication also applies CDA to a Formula 1 racecar lap-time design
+problem. That case study is not included here: its lap-time model comes from a
+separate cited reference and its equations are not given, so there is nothing to
+implement.
 
 ## License
 

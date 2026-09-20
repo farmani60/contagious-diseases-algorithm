@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run every algorithm on the two test functions defined in the manuscript.
+"""Run every algorithm on the two low-dimensional radial test functions.
 
 For each algorithm this reports the best objective value found, the position of
 that solution, the number of evaluations needed to first reach the global
@@ -7,7 +7,7 @@ optimum, and the number of evaluations after which the best value stopped
 improving.  All figures are measured here; nothing is taken from the paper.
 
 Usage:
-    python experiments/run_paper_functions.py [--seeds 30] [--budget 10000]
+    python experiments/run_radial_functions.py [--seeds 30] [--budget 10000]
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from cda.baselines import ALGORITHMS
-from cda.benchmarks import PAPER_FUNCTIONS, get
+from cda.benchmarks import RADIAL_FUNCTIONS, get
 from cda.core import CDA, CDAConfig
 from cda.runner import RESULTS_DIR, write_csv
 
@@ -42,8 +42,8 @@ def run(function_name: str, seeds: int, budget: int) -> list[dict]:
     true_optimum = function.optimum_value
 
     variants = {
-        "CDA": lambda seed: CDA(CDAConfig.paper(seed=seed)),
-        "CDA (budgeted)": lambda seed: CDA(CDAConfig.budgeted(seed=seed)),
+        "CDA": lambda seed: CDA(CDAConfig.original(seed=seed)),
+        "CDA (tuned)": lambda seed: CDA(CDAConfig.tuned(seed=seed)),
         **{name: (lambda seed, c=cls: c(seed=seed)) for name, cls in ALGORITHMS.items()},
     }
 
@@ -92,7 +92,7 @@ def main() -> None:
     args = parser.parse_args()
 
     all_rows: list[dict] = []
-    for function_name in PAPER_FUNCTIONS:
+    for function_name in RADIAL_FUNCTIONS:
         function = get(function_name)
         print(f"\n=== {function_name} ===")
         print(f"true global optimum: {function.optimum_value:.10f} "
@@ -110,7 +110,7 @@ def main() -> None:
                 f"{row['x1']:>11.4f}{row['x2']:>11.4f}"
                 f"{'-' if found is None else found:>11}{row['hit_rate']:>10.0%}"
             )
-    path = write_csv(all_rows, RESULTS_DIR / "paper_functions.csv")
+    path = write_csv(all_rows, RESULTS_DIR / "radial_functions.csv")
     print(f"\nwritten to {path}")
 
 

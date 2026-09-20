@@ -43,9 +43,8 @@ __all__ = [
 # Categorical slots 1-5 of the reference palette, in fixed order.  Validated for
 # colour-vision deficiency on the adjacent pairlist.
 ALGORITHM_COLOURS: dict[str, str] = {
-    "CDA": "#2a78d6",         # blue
-    "CDA (paper)": "#2a78d6",
-    "CDA (budgeted)": "#4a3aa7",  # violet, slot 7
+    "CDA": "#2a78d6",              # blue, slot 1
+    "CDA (tuned)": "#4a3aa7",      # violet, slot 7
     "PSO": "#eb6834",         # orange
     "GA": "#1baf7a",          # aqua
     "DE": "#eda100",          # yellow
@@ -56,8 +55,7 @@ ALGORITHM_COLOURS: dict[str, str] = {
 # and by the result tables in the README.
 ALGORITHM_STYLES: dict[str, tuple] = {
     "CDA": (0, ()),
-    "CDA (paper)": (0, ()),
-    "CDA (budgeted)": (0, (4, 1, 1, 1)),
+    "CDA (tuned)": (0, (4, 1, 1, 1)),
     "PSO": (0, (6, 2)),
     "GA": (0, (1, 1.6)),
     "DE": (0, (5, 1.5, 1, 1.5)),
@@ -268,7 +266,7 @@ def plot_convergence(
 # --------------------------------------------------------------------------
 def plot_spread_snapshots(
     path: str | Path,
-    function_name: str = "paper_f2",
+    function_name: str = "ripple_cone",
     iterations: Sequence[int] = (1, 3, 5, 7),
     config: CDAConfig | None = None,
     resolution: int = 300,
@@ -281,7 +279,7 @@ def plot_spread_snapshots(
     apply_style()
     function = get(function_name)
     problem = function.to_problem(budget=200_000)
-    config = config or CDAConfig.paper(seed=0, track_positions=True)
+    config = config or CDAConfig.original(seed=0, track_positions=True)
     config = CDAConfig(**{**vars(config), "track_positions": True})
     result = CDA(config).run(problem)
     positions = result.history["positions"]
@@ -343,8 +341,8 @@ def plot_population(
     """
     apply_style()
     configs = configs or {
-        "CDA (paper)": CDAConfig.paper(seed=0),
-        "CDA (budgeted)": CDAConfig.budgeted(seed=0),
+        "CDA": CDAConfig.original(seed=0),
+        "CDA (tuned)": CDAConfig.tuned(seed=0),
     }
     fig, (top, bottom) = plt.subplots(2, 1, figsize=(7.2, 5.4), sharex=True)
 

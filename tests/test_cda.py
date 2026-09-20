@@ -133,20 +133,20 @@ class TestTermination:
     def test_extinction_stops_the_run_by_default(self):
         # A needle-in-a-haystack landscape: contacts almost never improve.
         problem = get("easom").to_problem(budget=50000)
-        result = CDA(CDAConfig.paper(seed=1)).run(problem)
+        result = CDA(CDAConfig.original(seed=1)).run(problem)
         assert result.stop_reason in {"extinction", "mean_gap"}
         assert result.evaluations < problem.budget
 
     def test_restart_spends_the_whole_budget(self):
         problem = get("easom").to_problem(budget=20000)
-        result = CDA(CDAConfig.budgeted(seed=1)).run(problem)
+        result = CDA(CDAConfig.tuned(seed=1)).run(problem)
         assert result.stop_reason == "budget_exhausted"
         assert result.evaluations == 20000
         assert max(result.history["outbreak"]) > 1
 
     def test_restart_resets_the_contact_radius(self):
         problem = get("rastrigin").to_problem(10, budget=20000)
-        result = CDA(CDAConfig.budgeted(seed=0)).run(problem)
+        result = CDA(CDAConfig.tuned(seed=0)).run(problem)
         days = np.array(result.history["day"])
         outbreaks = np.array(result.history["outbreak"])
         if outbreaks.max() > 1:
@@ -182,12 +182,12 @@ class TestOptimisation:
     @pytest.mark.parametrize("dim", [2, 5, 10])
     def test_solves_the_sphere(self, dim):
         problem = get("sphere").to_problem(dim, budget=30000)
-        result = CDA(CDAConfig.budgeted(seed=0)).run(problem)
+        result = CDA(CDAConfig.tuned(seed=0)).run(problem)
         assert result.best_value < 0.5
 
-    def test_finds_the_optimum_of_paper_function_one(self):
-        problem = get("paper_f1").to_problem(budget=10000)
-        CDA(CDAConfig.paper(seed=0)).run(problem)
+    def test_finds_the_optimum_of_the_sinc_well(self):
+        problem = get("sinc_well").to_problem(budget=10000)
+        CDA(CDAConfig.original(seed=0)).run(problem)
         assert problem.error() < 1e-3
         assert np.allclose(problem.best_real(), [4.0, 4.0], atol=1e-2)
 
@@ -197,7 +197,7 @@ class TestOptimisation:
         cda_errors, random_errors = [], []
         for seed in range(5):
             p1 = get("sphere").to_problem(10, budget=20000)
-            CDA(CDAConfig.budgeted(seed=seed)).run(p1)
+            CDA(CDAConfig.tuned(seed=seed)).run(p1)
             cda_errors.append(p1.best_value)
             p2 = get("sphere").to_problem(10, budget=20000)
             RandomSearch(seed=seed).run(p2)

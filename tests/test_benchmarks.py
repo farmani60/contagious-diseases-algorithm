@@ -70,31 +70,31 @@ def test_optimum_lies_inside_the_bounds(name):
     assert np.all(position >= low - 1e-9) and np.all(position <= high + 1e-9), name
 
 
-class TestPaperFunctions:
+class TestRadialFunctions:
     def test_f1_matches_the_closed_form_optimum(self):
         # -20 sin(0.1)/0.1 at the centre (4, 4).
-        value = float(B.paper_f1(np.array([[4.0, 4.0]]))[0])
+        value = float(B.sinc_well(np.array([[4.0, 4.0]]))[0])
         assert value == pytest.approx(-200.0 * np.sin(0.1))
         assert value == pytest.approx(-19.96668, abs=1e-5)
 
     def test_f1_has_a_single_global_basin_at_four_four(self):
-        centre = float(B.paper_f1(np.array([[4.0, 4.0]]))[0])
-        around = B.paper_f1(
+        centre = float(B.sinc_well(np.array([[4.0, 4.0]]))[0])
+        around = B.sinc_well(
             np.array([[4.2, 4.0], [3.8, 4.0], [4.0, 4.2], [4.0, 3.8]])
         )
         assert np.all(around > centre)
 
     def test_f2_global_minimum_is_the_deepest_point_found(self):
         # Verified by a dense grid search plus local refinement.
-        true_min = B.get("paper_f2").optimum_value
+        true_min = B.get("ripple_cone").optimum_value
         rng = np.random.default_rng(0)
-        samples = B.paper_f2(rng.uniform(-5.0, 5.0, size=(200_000, 2)))
+        samples = B.ripple_cone(rng.uniform(-5.0, 5.0, size=(200_000, 2)))
         assert samples.min() > true_min
         assert true_min == pytest.approx(-0.24740519, abs=1e-7)
 
     def test_f2_is_symmetric_in_x2(self):
-        a = B.paper_f2(np.array([[-0.2, 0.3]]))
-        b = B.paper_f2(np.array([[-0.2, -0.3]]))
+        a = B.ripple_cone(np.array([[-0.2, 0.3]]))
+        b = B.ripple_cone(np.array([[-0.2, -0.3]]))
         assert a[0] == pytest.approx(b[0])
 
 
